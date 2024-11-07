@@ -1,0 +1,103 @@
+{
+    "cryptocontext_name": {
+        "source": "",
+        "type": "cryptocontext",
+        "scheme": "CKKSRNS_SCHEME"
+    },
+    "private_key_name": {
+        "source": "",
+        "type": "private_key",
+        "cryptocontext": "cryptocontext_name",
+        "linked_key_for_generation": "public_key_name",
+        "dependencies": [
+            "cryptocontext_name"
+        ]
+    },
+    "public_key_name": {
+        "source": "",
+        "type": "public_key",
+        "cryptocontext": "cryptocontext_name",
+        "linked_key_for_generation": "private_key_name",
+        "dependencies": [
+            "cryptocontext_name"
+        ]
+    },
+    "sum_key_name": {
+        "source": "",
+        "type": "sum_key",
+        "cryptocontext": "cryptocontext_name",
+        "private_key": "private_key_name",
+        "dependencies": [
+            "cryptocontext_name",
+            "private_key_name"
+        ]
+    },
+    "mult_key_name": {
+        "source": "",
+        "type": "mult_key",
+        "cryptocontext": "cryptocontext_name",
+        "private_key": "private_key_name",
+        "dependencies": [
+            "cryptocontext_name",
+            "private_key_name"
+        ]
+    },
+    "rotation_key_name": {
+        "source": "",
+        "type": "rotation_key",
+        "cryptocontext": "cryptocontext_name",
+        "private_key": "private_key_name",
+        "indexes": [
+            1,
+            -1,
+            2,
+            -2
+        ],
+        "dependencies": [
+            "cryptocontext_name",
+            "private_key_name"
+        ]
+    },
+    "ciphertext_1": {
+        "source": "",
+        "type": "ciphertext",
+        "cryptocontext": "cryptocontext_name",
+        "public_key": "public_key_name",
+        "plaintext_value": [
+            1
+        ],
+        "dependencies": [
+            "cryptocontext_name",
+            "public_key_name"
+        ]
+    },
+    "ciphertext_2": {
+        "source": "",
+        "type": "ciphertext",
+        "cryptocontext": "cryptocontext_name",
+        "public_key": "public_key_name",
+        "plaintext_value": [
+            1,
+            2,
+            3,
+            -4
+        ],
+        "dependencies": [
+            "cryptocontext_name",
+            "public_key_name"
+        ]
+    },
+    "non_encrypted_data_1": {
+        "type": "i32",
+        "value": 46
+    },
+    "non_encrypted_data_2": {
+        "type": "i32",
+        "value": [
+            1,
+            2,
+            3,
+            4
+        ]
+    }
+}

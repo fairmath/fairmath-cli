@@ -1,0 +1,103 @@
+{
+    "ciphertext_1": {
+        "cryptocontext": "cryptocontext_name",
+        "dependencies": [
+            "cryptocontext_name",
+            "public_key_name"
+        ],
+        "plaintext_value": [
+            1
+        ],
+        "public_key": "public_key_name",
+        "source": "local:///root/GIT/fairmath-cli/data/output/ciphertext_1",
+        "type": "ciphertext"
+    },
+    "ciphertext_2": {
+        "cryptocontext": "cryptocontext_name",
+        "dependencies": [
+            "cryptocontext_name",
+            "public_key_name"
+        ],
+        "plaintext_value": [
+            1,
+            2,
+            3,
+            -4
+        ],
+        "public_key": "public_key_name",
+        "source": "local:///root/GIT/fairmath-cli/data/output/ciphertext_2",
+        "type": "ciphertext"
+    },
+    "cryptocontext_name": {
+        "scheme": "CKKSRNS_SCHEME",
+        "source": "local:///root/GIT/fairmath-cli/data/output/cryptocontext_name",
+        "type": "cryptocontext"
+    },
+    "mult_key_name": {
+        "cryptocontext": "cryptocontext_name",
+        "dependencies": [
+            "cryptocontext_name",
+            "private_key_name"
+        ],
+        "private_key": "private_key_name",
+        "source": "local:///root/GIT/fairmath-cli/data/output/mult_key_name",
+        "type": "mult_key"
+    },
+    "non_encrypted_data_1": {
+        "type": "i32",
+        "value": 46
+    },
+    "non_encrypted_data_2": {
+        "type": "i32",
+        "value": [
+            1,
+            2,
+            3,
+            4
+        ]
+    },
+    "private_key_name": {
+        "cryptocontext": "cryptocontext_name",
+        "dependencies": [
+            "cryptocontext_name"
+        ],
+        "linked_key_for_generation": "public_key_name",
+        "source": "local:///root/GIT/fairmath-cli/data/output/private_key_name",
+        "type": "private_key"
+    },
+    "public_key_name": {
+        "cryptocontext": "cryptocontext_name",
+        "dependencies": [
+            "cryptocontext_name"
+        ],
+        "linked_key_for_generation": "private_key_name",
+        "source": "local:///root/GIT/fairmath-cli/data/output/public_key_name",
+        "type": "public_key"
+    },
+    "rotation_key_name": {
+        "cryptocontext": "cryptocontext_name",
+        "dependencies": [
+            "cryptocontext_name",
+            "private_key_name"
+        ],
+        "indexes": [
+            1,
+            -1,
+            2,
+            -2
+        ],
+        "private_key": "private_key_name",
+        "source": "local:///root/GIT/fairmath-cli/data/output/rotation_key_name",
+        "type": "rotation_key"
+    },
+    "sum_key_name": {
+        "cryptocontext": "cryptocontext_name",
+        "dependencies": [
+            "cryptocontext_name",
+            "private_key_name"
+        ],
+        "private_key": "private_key_name",
+        "source": "local:///root/GIT/fairmath-cli/data/output/sum_key_name",
+        "type": "sum_key"
+    }
+}
