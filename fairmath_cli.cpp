@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "config.h"
+#include "configProcessor.h"
 
 namespace po = boost::program_options;
 
@@ -13,7 +13,8 @@ int main(int argc, char *argv[]) try
     ("help,h", "produce help message")
     ("input_config", po::value<std::string>(), "set input config json location")
     ("output_crypto_objects", po::value<std::string>(), "set absolute path to output directory of crypto objects")
-    ("output_config", po::value<std::string>(), "set output config json location");
+    ("output_config", po::value<std::string>(), "set output config json location")
+    ("output_config_json_indent", po::value<std::string>()->default_value("-1")->implicit_value("-1"), "set output config json indent (default: -1)");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -32,10 +33,13 @@ int main(int argc, char *argv[]) try
     std::string outputCryptoObjectsDirectory = vm["output_crypto_objects"].as<std::string>();
     if (outputCryptoObjectsDirectory.back() != '/') { outputCryptoObjectsDirectory.push_back('/'); }
 
+
+
     cli::ConfigProcessor(
         std::move(configJson),
         std::move(outputCryptoObjectsDirectory),
-        vm["output_config"].as<std::string>()).generateOutputConfig();
+        vm["output_config"].as<std::string>(),
+        std::stoi(vm["output_config_json_indent"].as<const std::string&>())).generateOutputConfig();
 
     return EXIT_SUCCESS;
 }

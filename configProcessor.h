@@ -19,6 +19,7 @@ private:
     nlohmann::json m_configJson;
     std::string m_outputCryptoObjectsDirectory;
     std::string m_outputConfigLocation;
+    int m_indent;
 
     std::unordered_map<std::string_view,
         std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>>> m_ccMap;
@@ -32,7 +33,8 @@ public:
     explicit ConfigProcessor(
         JsonType&& configJson,
         StringType1&& outputCryptoObjectsDirectory,
-        StringType2&& outputConfigLocation);
+        StringType2&& outputConfigLocation,
+        const int indent);
 
     ConfigProcessor(const ConfigProcessor&) = default;
     ConfigProcessor(ConfigProcessor&&) = default;
@@ -47,6 +49,8 @@ public:
 
     template <typename StringType2>
     void setOutputConfigLocation(StringType2&& outputConfigLocation);
+
+    void setIndent(const int indent);
 
     void generateOutputConfig();
 
@@ -111,10 +115,12 @@ template <typename JsonType, typename StringType1, typename StringType2>
 ConfigProcessor::ConfigProcessor(
     JsonType&& configJson,
     StringType1&& outputCryptoObjectsDirectory,
-    StringType2&& outputConfigLocation)
+    StringType2&& outputConfigLocation,
+    const int indent)
     : m_configJson(std::forward<JsonType>(configJson))
     , m_outputCryptoObjectsDirectory(std::forward<StringType1>(outputCryptoObjectsDirectory))
     , m_outputConfigLocation(std::forward<StringType2>(outputConfigLocation))
+    , m_indent(indent)
 { }
 
 template <typename JsonType>
@@ -133,6 +139,11 @@ template <typename StringType2>
 void ConfigProcessor::setOutputConfigLocation(StringType2&& outputConfigLocation)
 {
     m_outputConfigLocation = std::forward<StringType2>(outputConfigLocation);
+}
+
+void ConfigProcessor::setIndent(const int indent)
+{
+    m_indent = indent;
 }
 
 void ConfigProcessor::generateOutputConfig()
@@ -184,7 +195,7 @@ void ConfigProcessor::generateOutputConfig()
 
     std::ofstream ofsOutputConfigJson(m_outputConfigLocation, std::ios::out);
     if (!ofsOutputConfigJson.is_open()) { throw std::runtime_error("Unable to open output config json"); }
-    ofsOutputConfigJson << m_configJson.dump(4);
+    ofsOutputConfigJson << m_configJson.dump(m_indent);
     ofsOutputConfigJson.close();
 
     m_ccMap.clear();
