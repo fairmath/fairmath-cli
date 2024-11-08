@@ -33,8 +33,6 @@ int main(int argc, char *argv[]) try
     std::string outputCryptoObjectsDirectory = vm["output_crypto_objects"].as<std::string>();
     if (outputCryptoObjectsDirectory.back() != '/') { outputCryptoObjectsDirectory.push_back('/'); }
 
-
-
     cli::ConfigProcessor(
         std::move(configJson),
         std::move(outputCryptoObjectsDirectory),
