@@ -28,6 +28,8 @@ private:
     std::unordered_map<std::string_view,
         std::shared_ptr<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>> m_privateKeyMap;
 
+    std::vector<std::string_view> m_generatedCCVec;
+
 public:
     template <typename JsonType, typename StringType1, typename StringType2>
     explicit ConfigProcessor(
@@ -36,10 +38,10 @@ public:
         StringType2&& outputConfigLocation,
         const int indent);
 
-    ConfigProcessor(const ConfigProcessor&) = default;
-    ConfigProcessor(ConfigProcessor&&) = default;
-    ConfigProcessor& operator=(const ConfigProcessor&) = default;
-    ConfigProcessor& operator=(ConfigProcessor&&) = default;
+    ConfigProcessor(const ConfigProcessor&) = delete;
+    ConfigProcessor(ConfigProcessor&&) = delete;
+    ConfigProcessor& operator=(const ConfigProcessor&) = delete;
+    ConfigProcessor& operator=(ConfigProcessor&&) = delete;
 
     template <typename JsonType>
     void setConfigJson(JsonType&& configJson);
@@ -62,7 +64,7 @@ private:
     void generateCiphertextAndSerializeIfNotExist(
         const std::string& ciphertextName,
         nlohmann::json& ciphertextContent);
-    void generateCCAndSerializeIfNotExist(
+    void generateCCIfNotExist(
         const std::string_view ccName,
         nlohmann::json& ccContent);
     template <typename KeyGenFuncType, typename ...KeyGenFuncParamsTypes>
@@ -77,7 +79,7 @@ private:
     void serialize(const std::string& filename,
         const std::shared_ptr<CryptoObjectType>& cryptoObject);
     void serialize(const std::string& filename,
-        bool (*func)(std::ostream&, const lbcrypto::SerType::SERBINARY&, std::string)) const;
+        bool (*serializeFunc)(std::ostream&, const lbcrypto::SerType::SERBINARY&, std::string)) const;
     template <typename CryptoObjectType>
     static void deserialize(const std::string& path,
         std::shared_ptr<CryptoObjectType>& cryptoObject);
@@ -93,7 +95,8 @@ private:
         const std::string_view keyName,
         nlohmann::json& keyContent);
 
-    [[nodiscard]] static lbcrypto::CryptoContext<lbcrypto::DCRTPoly> generateCC(
+    [[nodiscard]] std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>> generateCC(
+        const std::string_view ccName,
         const nlohmann::json& ccContent);
     template <typename SchemeType>
     [[nodiscard]] static lbcrypto::CCParams<SchemeType> getCCParams(
@@ -107,8 +110,8 @@ private:
         lbcrypto::KeyPair<lbcrypto::DCRTPoly>& keyPair) noexcept;
 
     inline void updateSource(
-        nlohmann::json& argContent,
-        const std::string& filename);
+        const std::string& filename,
+        nlohmann::json& argContent);
 };
 
 template <typename JsonType, typename StringType1, typename StringType2>
@@ -152,7 +155,7 @@ void ConfigProcessor::generateOutputConfig()
     {
         switch (strHash(argContent["type"].get<std::string_view>()))
         {
-            case strHash("cryptocontext"): generateCCAndSerializeIfNotExist(
+            case strHash("cryptocontext"): generateCCIfNotExist(
                 argName, argContent); break;
             case strHash("private_key"): generateKeyAndSerializeIfNotExist<
                 lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(argName, argContent); break;
@@ -193,6 +196,15 @@ void ConfigProcessor::generateOutputConfig()
         }
     }
 
+    // we need to serialize the crypto context at the end
+    // to handle some enablings correctly (e.g. LEVELEDSHE, ADVANCEDSHE)
+    for (const std::string_view ccName : m_generatedCCVec)
+    {
+        const std::string ccNameStr(ccName);
+        serialize<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>>(ccNameStr, m_ccMap[ccName]);
+        updateSource(ccNameStr, m_configJson[ccName]);
+    }
+
     std::ofstream ofsOutputConfigJson(m_outputConfigLocation, std::ios::out);
     if (!ofsOutputConfigJson.is_open()) { throw std::runtime_error("Unable to open output config json"); }
     ofsOutputConfigJson << m_configJson.dump(m_indent);
@@ -201,6 +213,8 @@ void ConfigProcessor::generateOutputConfig()
     m_ccMap.clear();
     m_privateKeyMap.clear();
     m_publicKeyMap.clear();
+
+    m_generatedCCVec.clear();
 }
 
 template <typename KeyType>
@@ -237,17 +251,15 @@ void ConfigProcessor::generateCiphertextAndSerializeIfNotExist(
 
     const lbcrypto::Ciphertext<lbcrypto::DCRTPoly> ciphertext = cc->Encrypt(publicKey, plaintext);
     serialize<lbcrypto::CiphertextImpl<lbcrypto::DCRTPoly>>(ciphertextName, ciphertext);
-    updateSource(ciphertextContent, ciphertextName);
+    updateSource(ciphertextName, ciphertextContent);
 }
 
-void ConfigProcessor::generateCCAndSerializeIfNotExist(const std::string_view ccName, nlohmann::json& ccContent)
+void ConfigProcessor::generateCCIfNotExist(const std::string_view ccName, nlohmann::json& ccContent)
 {
     if (m_ccMap.contains(ccName)) return;
     if (!ccContent["source"].get<std::string_view>().empty()) return;
 
-    auto itCC = m_ccMap.emplace(ccName, generateCC(ccContent)).first;
-    serialize<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>>(std::string(itCC->first), itCC->second);
-    updateSource(ccContent, std::string(itCC->first));
+    m_ccMap.emplace(ccName, generateCC(ccName, ccContent)).first;
 }
 
 template <typename KeyGenFuncType, typename ...KeyGenFuncParamsTypes>
@@ -266,6 +278,7 @@ void ConfigProcessor::generateEvalKeyAndSerializeIfNotExist(
         aquireKey<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(keyContent["private_key"].get<std::string_view>());
 
     cc->Enable(lbcrypto::LEVELEDSHE);
+
     if constexpr (std::is_same_v<KeyGenFuncType,
         void (lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>::*)(
             const std::shared_ptr<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>,
@@ -273,10 +286,11 @@ void ConfigProcessor::generateEvalKeyAndSerializeIfNotExist(
     {
         cc->Enable(lbcrypto::ADVANCEDSHE);
     }
+
     std::invoke(keyGenFunc, cc, privateKey, std::forward<KeyGenFuncParamsTypes>(keyGenFuncParams)...);
 
     serialize(keyName, serializeFunc);
-    updateSource(keyContent, keyName);
+    updateSource(keyName, keyContent);
 }
 
 template <typename CryptoObjectType>
@@ -292,12 +306,12 @@ void ConfigProcessor::serialize(
 
 void ConfigProcessor::serialize(
     const std::string& filename,
-    bool (*func)(std::ostream&, const lbcrypto::SerType::SERBINARY&, std::string)) const
+    bool (*serializeFunc)(std::ostream&, const lbcrypto::SerType::SERBINARY&, std::string)) const
 {
     std::ofstream ofs(m_outputCryptoObjectsDirectory + filename, std::ios::out | std::ios::binary);
     if (ofs.is_open())
     {
-        if (!func(ofs, lbcrypto::SerType::BINARY, ""))
+        if (!serializeFunc(ofs, lbcrypto::SerType::BINARY, ""))
         {
             ofs.close();
             throw std::runtime_error("Unable to serialize " + filename);
@@ -306,8 +320,7 @@ void ConfigProcessor::serialize(
     }
     else
     {
-        throw std::runtime_error(
-            "Unable to open " + m_outputCryptoObjectsDirectory +
+        throw std::runtime_error("Unable to open " + m_outputCryptoObjectsDirectory +
             filename + " file for writing serialization");
     }
 }
@@ -354,9 +367,7 @@ template <typename KeyType>
     {
         if (m_configJson[ccName]["source"].get<std::string_view>().empty())
         {
-            itCC = m_ccMap.emplace(ccName, generateCC(m_configJson[ccName])).first;
-            serialize<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>>(std::string(itCC->first), itCC->second);
-            updateSource(m_configJson[ccName], std::string(itCC->first));
+            itCC = m_ccMap.emplace(ccName, generateCC(ccName, m_configJson[ccName])).first;
         }
         else
         {
@@ -399,7 +410,7 @@ void ConfigProcessor::generateKeyPairAndSerialize(const std::string_view keyName
                 linkedKeyName, std::move(getKeyFromKeyPair<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(keyPair))).first;
             serialize<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(linkedKeyName, itKey->second);
         }
-        updateSource(m_configJson[linkedKeyName], linkedKeyName);
+        updateSource(linkedKeyName, m_configJson[linkedKeyName]);
     }
     else
     {
@@ -417,22 +428,28 @@ void ConfigProcessor::generateKeyPairAndSerialize(const std::string_view keyName
         }
     }
     auto itKey = getKeyMap<KeyType>().emplace(keyName, std::move(getKeyFromKeyPair<KeyType>(keyPair))).first;
-    serialize<KeyType>(std::string(itKey->first), itKey->second);
-    updateSource(keyContent, std::string(itKey->first));
+    const std::string keyNameStr(itKey->first);
+    serialize<KeyType>(keyNameStr, itKey->second);
+    updateSource(keyNameStr, keyContent);
 }
 
-[[nodiscard]] lbcrypto::CryptoContext<lbcrypto::DCRTPoly> ConfigProcessor::generateCC(const nlohmann::json& ccContent)
+[[nodiscard]] std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>> ConfigProcessor::generateCC(
+    const std::string_view ccName, const nlohmann::json& ccContent)
 {
+    std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>> cc;
     switch (strHash(ccContent["scheme"].get<std::string_view>()))
     {
-        case strHash("BFVRNS_SCHEME"): return lbcrypto::GenCryptoContext(
-            getCCParams<lbcrypto::CryptoContextBFVRNS>(ccContent));
-        case strHash("BGVRNS_SCHEME"): return lbcrypto::GenCryptoContext(
-            getCCParams<lbcrypto::CryptoContextBGVRNS>(ccContent));
-        case strHash("CKKSRNS_SCHEME"): return lbcrypto::GenCryptoContext(
-            getCCParams<lbcrypto::CryptoContextCKKSRNS>(ccContent));
+        case strHash("BFVRNS_SCHEME"): cc = lbcrypto::GenCryptoContext(
+            getCCParams<lbcrypto::CryptoContextBFVRNS>(ccContent)); break;
+        case strHash("BGVRNS_SCHEME"): cc = lbcrypto::GenCryptoContext(
+            getCCParams<lbcrypto::CryptoContextBGVRNS>(ccContent)); break;
+        case strHash("CKKSRNS_SCHEME"): cc = lbcrypto::GenCryptoContext(
+            getCCParams<lbcrypto::CryptoContextCKKSRNS>(ccContent)); break;
         default: throw std::runtime_error("Scheme type is not supported");
     }
+    m_generatedCCVec.emplace_back(ccName);
+
+    return cc;
 }
 
 template <typename SchemeType>
@@ -523,7 +540,7 @@ template <typename KeyType>
         return keyPair.publicKey;
 }
 
-inline void ConfigProcessor::updateSource(nlohmann::json& argContent, const std::string& filename)
+inline void ConfigProcessor::updateSource(const std::string& filename, nlohmann::json& argContent)
 {
     static const std::string path = "local://" + m_outputCryptoObjectsDirectory;
     argContent["source"] = path + filename;
