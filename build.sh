@@ -2,6 +2,6 @@
 
 rm -rf BUILD
 mkdir BUILD && cd BUILD
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build .
 cd ../

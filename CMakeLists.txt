@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(fairmath_cli CXX)
+project(fairmathCli CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 find_package(OpenFHE CONFIG REQUIRED)
@@ -32,7 +32,7 @@ set(CMAKE_EXE_LINKER_FLAGS ${OpenFHE_EXE_LINKER_FLAGS})
 link_libraries(${OpenFHE_SHARED_LIBRARIES})
 
 find_package(Boost REQUIRED COMPONENTS program_options)
-add_executable(fairmath_cli fairmath_cli.cpp)
+add_executable(fairmathCli fairmathCli.cpp)
 
-target_link_libraries(fairmath_cli -ltcmalloc_minimal -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${Boost_PROGRAM_OPTIONS_LIBRARY})
+target_link_libraries(fairmathCli -ltcmalloc_minimal -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${Boost_PROGRAM_OPTIONS_LIBRARY})
 
