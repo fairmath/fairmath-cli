@@ -23,7 +23,7 @@ jobs:
             cmakeGen: '"Unix Makefiles"'
             cc: clang
             cxx: clang++
-            tools: NONINTERACTIVE=1 brew install libomp llvm
+            tools: NONINTERACTIVE=1 brew install libomp
 
     steps:
       - uses: actions/checkout@v3

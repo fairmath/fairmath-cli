@@ -87,27 +87,86 @@ private:
     template <typename KeyType>
     [[nodiscard]] std::shared_ptr<KeyType> aquireKey(
         const std::string_view keyName);
+
     [[nodiscard]] std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>> aquireCC(
         const std::string_view ccName);
 
     template <typename KeyType>
-    void generateKeyPairAndSerialize(
-        const std::string_view keyName,
-        nlohmann::json& keyContent);
+    [[nodiscard]] inline auto& getKeyMap() noexcept
+    {
+        if constexpr (std::is_same_v<std::remove_cvref_t<KeyType>, lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>)
+            return m_privateKeyMap;
+        else
+            return m_publicKeyMap;
+    }
+
+    template <typename KeyType>
+    [[nodiscard]] inline auto& getKeyFromKeyPair(lbcrypto::KeyPair<lbcrypto::DCRTPoly>& keyPair) noexcept
+    {
+        if constexpr (std::is_same_v<std::remove_cvref_t<KeyType>, lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>)
+            return keyPair.secretKey;
+        else
+            return keyPair.publicKey;
+    }
+
+    template <typename KeyType>
+    void generateKeyPairAndSerialize(const std::string_view keyName, nlohmann::json& keyContent)
+    {
+        std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>> cc =
+            aquireCC(keyContent["cryptocontext"].get<std::string_view>());
+        cc->Enable(lbcrypto::PKE);
+        lbcrypto::KeyPair<lbcrypto::DCRTPoly> keyPair = cc->KeyGen();
+        const std::string& linkedKeyName
+            = keyContent["linked_key_for_generation"].get_ref<const std::string&>();
+        if (!linkedKeyName.empty())
+        {
+            if (!(m_configJson[linkedKeyName]["linked_key_for_generation"].get<std::string_view>() == keyName &&
+                m_configJson[linkedKeyName]["source"].get<std::string_view>().empty()))
+            {
+                throw std::runtime_error("Incorrect linking between keys");
+            }
+            if constexpr (std::is_same_v<KeyType, lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>)
+            {
+                auto itKey = getKeyMap<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>().emplace(
+                    linkedKeyName, std::move(getKeyFromKeyPair<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>(keyPair))).first;
+                serialize<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>(linkedKeyName, itKey->second);
+            }
+            else
+            {
+                auto itKey = getKeyMap<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>().emplace(
+                    linkedKeyName, std::move(getKeyFromKeyPair<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(keyPair))).first;
+                serialize<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(linkedKeyName, itKey->second);
+            }
+            updateSource(linkedKeyName, m_configJson[linkedKeyName]);
+        }
+        else
+        {
+            if constexpr (std::is_same_v<KeyType, lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>)
+            {
+                serialize<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>(std::string(keyName) + "." +
+                    m_configJson[linkedKeyName]["type"].get<std::string>(),
+                    getKeyFromKeyPair<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>(keyPair));
+            }
+            else
+            {
+                serialize<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(std::string(keyName) + "." +
+                    m_configJson[linkedKeyName]["type"].get<std::string>(),
+                    getKeyFromKeyPair<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(keyPair));
+            }
+        }
+        auto itKey = getKeyMap<KeyType>().emplace(keyName, std::move(getKeyFromKeyPair<KeyType>(keyPair))).first;
+        const std::string keyNameStr(itKey->first);
+        serialize<KeyType>(keyNameStr, itKey->second);
+        updateSource(keyNameStr, keyContent);
+    }
 
     [[nodiscard]] std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>> generateCC(
         const std::string_view ccName,
         const nlohmann::json& ccContent);
+
     template <typename SchemeType>
     [[nodiscard]] static lbcrypto::CCParams<SchemeType> getCCParams(
         const nlohmann::json& ccContent);
-
-    template <typename KeyType>
-    [[nodiscard]] inline auto& getKeyMap() noexcept;
-
-    template <typename KeyType>
-    [[nodiscard]] inline auto& getKeyFromKeyPair(
-        lbcrypto::KeyPair<lbcrypto::DCRTPoly>& keyPair) noexcept;
 
     inline void updateSource(
         const std::string& filename,
@@ -382,57 +441,6 @@ template <typename KeyType>
     return itCC->second;
 }
 
-template <typename KeyType>
-void ConfigProcessor::generateKeyPairAndSerialize(const std::string_view keyName, nlohmann::json& keyContent)
-{
-    std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>> cc =
-        aquireCC(keyContent["cryptocontext"].get<std::string_view>());
-    cc->Enable(lbcrypto::PKE);
-    lbcrypto::KeyPair<lbcrypto::DCRTPoly> keyPair = cc->KeyGen();
-    const std::string& linkedKeyName
-        = keyContent["linked_key_for_generation"].get_ref<const std::string&>();
-    if (!linkedKeyName.empty())
-    {
-        if (!(m_configJson[linkedKeyName]["linked_key_for_generation"].get<std::string_view>() == keyName &&
-            m_configJson[linkedKeyName]["source"].get<std::string_view>().empty()))
-        {
-            throw std::runtime_error("Incorrect linking between keys");
-        }
-        if constexpr (std::is_same_v<KeyType, lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>)
-        {
-            auto itKey = getKeyMap<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>().emplace(
-                linkedKeyName, std::move(getKeyFromKeyPair<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>(keyPair))).first;
-            serialize<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>(linkedKeyName, itKey->second);
-        }
-        else
-        {
-            auto itKey = getKeyMap<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>().emplace(
-                linkedKeyName, std::move(getKeyFromKeyPair<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(keyPair))).first;
-            serialize<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(linkedKeyName, itKey->second);
-        }
-        updateSource(linkedKeyName, m_configJson[linkedKeyName]);
-    }
-    else
-    {
-        if constexpr (std::is_same_v<KeyType, lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>)
-        {
-            serialize<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>(std::string(keyName) + "." +
-                m_configJson[linkedKeyName]["type"].get<std::string>(),
-                getKeyFromKeyPair<lbcrypto::PublicKeyImpl<lbcrypto::DCRTPoly>>(keyPair));
-        }
-        else
-        {
-            serialize<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(std::string(keyName) + "." +
-                m_configJson[linkedKeyName]["type"].get<std::string>(),
-                getKeyFromKeyPair<lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>(keyPair));
-        }
-    }
-    auto itKey = getKeyMap<KeyType>().emplace(keyName, std::move(getKeyFromKeyPair<KeyType>(keyPair))).first;
-    const std::string keyNameStr(itKey->first);
-    serialize<KeyType>(keyNameStr, itKey->second);
-    updateSource(keyNameStr, keyContent);
-}
-
 [[nodiscard]] std::shared_ptr<lbcrypto::CryptoContextImpl<lbcrypto::DCRTPoly>> ConfigProcessor::generateCC(
     const std::string_view ccName, const nlohmann::json& ccContent)
 {
@@ -520,24 +528,6 @@ template <typename SchemeType>
             getCompressionLevel(ccContent["interactiveBootCompressionLevel"].get<std::string_view>())); }
 
     return params;
-}
-
-template <typename KeyType>
-[[nodiscard]] inline auto& ConfigProcessor::getKeyMap() noexcept
-{
-    if constexpr (std::is_same_v<std::remove_cvref_t<KeyType>, lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>)
-        return m_privateKeyMap;
-    else
-        return m_publicKeyMap;
-}
-
-template <typename KeyType>
-[[nodiscard]] inline auto& ConfigProcessor::getKeyFromKeyPair(lbcrypto::KeyPair<lbcrypto::DCRTPoly>& keyPair) noexcept
-{
-    if constexpr (std::is_same_v<std::remove_cvref_t<KeyType>, lbcrypto::PrivateKeyImpl<lbcrypto::DCRTPoly>>)
-        return keyPair.secretKey;
-    else
-        return keyPair.publicKey;
 }
 
 inline void ConfigProcessor::updateSource(const std::string& filename, nlohmann::json& argContent)
