@@ -1,15 +1,15 @@
-name: Release Build
+name: Release
 on: [push, workflow_dispatch]
 
 jobs:
   job:
-    name: ${{ matrix.os }}-${{ github.workflow }}
+    name: ${{ github.workflow }}:${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 1
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [macos-latest, ubuntu-latest]
         include:
           - os: ubuntu-latest
             vcpkgCommitId: '834977918592e4f5d5ec5fe48ba338c608faf9f9'
@@ -17,13 +17,17 @@ jobs:
             cc: gcc
             cxx: g++
             tools: echo "skip openmp installation"
+            platform: linux
 
           - os: macos-latest
             vcpkgCommitId: '834977918592e4f5d5ec5fe48ba338c608faf9f9'
             cmakeGen: '"Unix Makefiles"'
             cc: clang
             cxx: clang++
+            lgflags: -L/opt/homebrew/opt/libomp/lib
+            cxxflags: -I/opt/homebrew/opt/libomp/include
             tools: NONINTERACTIVE=1 brew install libomp
+            platform: darwin
 
     steps:
       - uses: actions/checkout@v3
@@ -64,6 +68,9 @@ jobs:
           VCPKG_ROOT: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}
           BUILD_TYPE: Release
           BIN_DIR: rel
+          LDFLAGS: ${{matrix.ldflags}}
+          CPPFLAGS: ${{matrix.cxxflags}}
+          OpenMP_ROOT: /opt/homebrew/opt/libomp
         run: cmake -DCMAKE_CXX_COMPILER=${{matrix.cxx}} -G ${{matrix.cmakeGen}} --preset=base
         shell: bash
 
@@ -78,5 +85,5 @@ jobs:
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: fairmath-keygen
+          name: fairmath-keygen-${{matrix.platform}}
           path: .build/install
