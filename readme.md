@@ -4,7 +4,7 @@
 This application is supposed to use within the FHE app runner provided by fairmath computer actor. It is responsible for FHE key generation and encryption/decryption of user's data. This application relying on OpenFHE library to generate keys and making encryption.
 
 ## How To Build
-* Install CMake 3.22 or above
+* Install CMake 3.22(or above), gcc or clang 
 * Install OpenMP(this is not necessary but highly recommended)
 * Clone vcpkg repo and install binary
 
