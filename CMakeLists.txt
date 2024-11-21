@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(fairmathCli CXX)
+project(fairmath-keygen CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 find_package(OpenFHE CONFIG REQUIRED)
+find_path(NLOHMANN_JSON_INCLUDE_DIRS "nlohmann/adl_serializer.hpp")
 
 if (OpenFHE_FOUND)
     message(STATUS "FOUND PACKAGE OpenFHE")
@@ -16,23 +17,18 @@ else()
     message(FATAL_ERROR "PACKAGE OpenFHE NOT FOUND")
 endif()
 
-set(CMAKE_CXX_FLAGS ${OpenFHE_CXX_FLAGS})
-
-include_directories(${OPENMP_INCLUDES})
-include_directories(${OpenFHE_INCLUDE})
-include_directories(${OpenFHE_INCLUDE}/third-party/include)
-include_directories(${OpenFHE_INCLUDE}/core)
-include_directories(${OpenFHE_INCLUDE}/pke)
-include_directories(${OpenFHE_INCLUDE}/binfhe)
-
-link_directories(${OpenFHE_LIBDIR})
-link_directories(${OPENMP_LIBRARIES})
-
-set(CMAKE_EXE_LINKER_FLAGS ${OpenFHE_EXE_LINKER_FLAGS})
-link_libraries(${OpenFHE_SHARED_LIBRARIES})
+include_directories(
+    ${OPENMP_INCLUDES} 
+    ${OpenFHE_INCLUDE} 
+    ${OpenFHE_INCLUDE}/core
+    ${OpenFHE_INCLUDE}/pke
+    ${OpenFHE_INCLUDE}/binfhe
+    ${NLOHMANN_JSON_INCLUDE_DIRS}
+    )
 
 find_package(Boost REQUIRED COMPONENTS program_options)
-add_executable(fairmathCli fairmathCli.cpp)
+add_executable(fairmath-keygen fairmathCli.cpp)
 
-target_link_libraries(fairmathCli -ltcmalloc_minimal -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${Boost_PROGRAM_OPTIONS_LIBRARY})
+target_include_directories(fairmath-keygen PRIVATE ${NLOHMANN_JSON_INCLUDE_DIRS})
+target_link_libraries(fairmath-keygen PRIVATE ${OpenFHE_LIBRARIES} Boost::program_options -ltcmalloc_minimal -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free)
 
