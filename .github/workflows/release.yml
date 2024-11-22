@@ -1,0 +1,93 @@
+name: Release
+
+on: 
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  job:
+    name: ${{ github.workflow }}:${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        include:
+          - os: ubuntu-latest
+            vcpkgCommitId: '834977918592e4f5d5ec5fe48ba338c608faf9f9'
+            cmakeGen: '"Unix Makefiles"'
+            cc: gcc
+            cxx: g++
+            tools: echo "skip openmp installation"
+            platform: linux
+
+          - os: macos-latest
+            vcpkgCommitId: '834977918592e4f5d5ec5fe48ba338c608faf9f9'
+            cmakeGen: '"Unix Makefiles"'
+            cc: clang
+            cxx: clang++
+            lgflags: -L/opt/homebrew/opt/libomp/lib
+            cxxflags: -I/opt/homebrew/opt/libomp/include
+            tools: NONINTERACTIVE=1 brew install libomp
+            platform: darwin
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - uses: lukka/get-cmake@latest     
+      - name: Dump the content of $RUNNER_TEMP
+        run: find $RUNNER_TEMP
+        shell: bash
+      - name: Dump the content of $RUNNER_WORKSPACE
+        run: find $RUNNER_WORKSPACE
+        shell: bash
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        id: runvcpkg
+        with:
+          # This specifies the location of vcpkg, where it is going to be restored from cache, or create from scratch.
+          vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
+          # The Git commit id of vcpkg to be checked out. This is only needed because we are not using a submodule.
+          vcpkgGitCommitId: '${{ matrix.vcpkgCommitId }}'
+          # The vcpkg.json file, which will be part of cache key computation.
+          vcpkgJsonGlob: '**/vcpkg.json'
+
+      - name: install tools
+        run: ${{ matrix.tools }} 
+
+      - name: Prints output of run-vcpkg's action
+        run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}'"
+
+      - name: Build Info
+        run: ${{ matrix.cxx }} --version && cmake --version
+
+      - name: Run CMake with vcpkg.json manifest
+        env:
+          VCPKG_ROOT: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}
+          BUILD_TYPE: Release
+          BIN_DIR: rel
+          LDFLAGS: ${{matrix.ldflags}}
+          CPPFLAGS: ${{matrix.cxxflags}}
+          OpenMP_ROOT: /opt/homebrew/opt/libomp
+        run: cmake -DCMAKE_CXX_COMPILER=${{matrix.cxx}} -G ${{matrix.cmakeGen}} --preset=base
+        shell: bash
+
+      - name: Run build
+        run: cmake --build .build/rel
+        shell: bash
+
+      - name: Run install
+        run: cmake --install .build/rel
+        shell: bash
+
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fairmath-keygen-${{matrix.platform}}
+          path: .build/install

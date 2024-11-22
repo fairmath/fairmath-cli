@@ -1,0 +1,7 @@
+{
+  "dependencies": [
+    "openfhe",
+    "boost-program-options",
+    "nlohmann-json"
+  ]
+}

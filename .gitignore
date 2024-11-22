@@ -1,1 +1,3 @@
 BUILD
+.build
+CMakeUserPresets.json

@@ -1,9 +1,16 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(fairmathCli CXX)
-set(CMAKE_CXX_STANDARD 20)
+project(fairmath-keygen CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH "\${ORIGIN}/lib")
+
+find_package(OpenMP)
+find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(OpenFHE CONFIG REQUIRED)
+find_path(NLOHMANN_JSON_INCLUDE_DIRS "nlohmann/adl_serializer.hpp")
 
 if (OpenFHE_FOUND)
     message(STATUS "FOUND PACKAGE OpenFHE")
@@ -16,23 +23,33 @@ else()
     message(FATAL_ERROR "PACKAGE OpenFHE NOT FOUND")
 endif()
 
-set(CMAKE_CXX_FLAGS ${OpenFHE_CXX_FLAGS})
+include_directories(
+    ${OpenFHE_INCLUDE} 
+    ${OpenFHE_INCLUDE}/core
+    ${OpenFHE_INCLUDE}/pke
+    ${OpenFHE_INCLUDE}/binfhe
+    ${NLOHMANN_JSON_INCLUDE_DIRS}
+)
 
-include_directories(${OPENMP_INCLUDES})
-include_directories(${OpenFHE_INCLUDE})
-include_directories(${OpenFHE_INCLUDE}/third-party/include)
-include_directories(${OpenFHE_INCLUDE}/core)
-include_directories(${OpenFHE_INCLUDE}/pke)
-include_directories(${OpenFHE_INCLUDE}/binfhe)
+set(SOURCES 
+    src/fairmathCli.cpp
+)
 
-link_directories(${OpenFHE_LIBDIR})
-link_directories(${OPENMP_LIBRARIES})
+add_executable(fairmath-keygen ${SOURCES})
 
-set(CMAKE_EXE_LINKER_FLAGS ${OpenFHE_EXE_LINKER_FLAGS})
-link_libraries(${OpenFHE_SHARED_LIBRARIES})
+if (OpenMP_CXX_FOUND)
+    message(STATUS "FOUND OpenMP: ${OpenMP_CXX_LIBRARIES}")
+    message(STATUS "FOUND OpenMP Dir: ${OpenMP_libomp_LIBRARY}")
 
-find_package(Boost REQUIRED COMPONENTS program_options)
-add_executable(fairmathCli fairmathCli.cpp)
+    #workaround for macos github actions
+    set(lib_openmp_path "${OpenMP_libomp_LIBRARY}")
+    cmake_path(GET lib_openmp_path PARENT_PATH OMP_LINK_DIR)
 
-target_link_libraries(fairmathCli -ltcmalloc_minimal -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${Boost_PROGRAM_OPTIONS_LIBRARY})
+    target_link_directories(fairmath-keygen PRIVATE ${OMP_LINK_DIR})
+endif()
 
+target_include_directories(fairmath-keygen PRIVATE ${NLOHMANN_JSON_INCLUDE_DIRS})
+target_link_libraries(fairmath-keygen PRIVATE ${OpenFHE_SHARED_LIBRARIES} Boost::program_options)
+
+install(TARGETS fairmath-keygen DESTINATION install)
+install(DIRECTORY ${OpenFHE_LIBDIR} DESTINATION install)

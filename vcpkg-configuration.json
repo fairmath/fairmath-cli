@@ -1,0 +1,24 @@
+{
+  "default-registry": {
+    "kind": "git",
+    "baseline": "834977918592e4f5d5ec5fe48ba338c608faf9f9",
+    "repository": "https://github.com/microsoft/vcpkg"
+  },
+  "registries": [
+    {
+      "kind": "artifact",
+      "location": "https://github.com/microsoft/vcpkg-ce-catalog/archive/refs/heads/main.zip",
+      "name": "microsoft"
+    },
+    {
+      "kind": "git",
+      "baseline": "2e613ed3bf95350c601bd0c68f64e91c343d2675",
+      "repository": "https://github.com/fairmath/vcpkg-registry",
+      "reference": "master",
+      "packages": [
+        "openfhe",
+        "nlohmann-json"
+      ]
+    }
+  ]
+}
