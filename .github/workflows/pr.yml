@@ -1,10 +1,9 @@
-name: Release
+name: Pull Request
 
-on: 
-  workflow_dispatch:
-  push:
-    tags:
-      - '*'
+on:
+  pull_request:
+    branches:
+      - '**'
 
 jobs:
   job:
@@ -67,7 +66,7 @@ jobs:
       - name: Build Info
         run: ${{ matrix.cxx }} --version && cmake --version
 
-      - name: Run CMake with vcpkg.json manifest
+      - name: Release Build - Run CMake with vcpkg.json manifest
         env:
           VCPKG_ROOT: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}
           BUILD_TYPE: Release
@@ -78,16 +77,21 @@ jobs:
         run: cmake -DCMAKE_CXX_COMPILER=${{matrix.cxx}} -G ${{matrix.cmakeGen}} --preset=base
         shell: bash
 
-      - name: Run build
+      - name: Release Build - Run build
         run: cmake --build .build/rel
         shell: bash
 
-      - name: Run install
-        run: cmake --install .build/rel
+      - name: Debug Build - Run CMake with vcpkg.json manifest
+        env:
+          VCPKG_ROOT: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}
+          BUILD_TYPE: Debug
+          BIN_DIR: deb
+          LDFLAGS: ${{matrix.ldflags}}
+          CPPFLAGS: ${{matrix.cxxflags}}
+          OpenMP_ROOT: /opt/homebrew/opt/libomp
+        run: cmake -DCMAKE_CXX_COMPILER=${{matrix.cxx}} -G ${{matrix.cmakeGen}} --preset=base
         shell: bash
 
-      - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v4
-        with:
-          name: fairmath-keygen-${{matrix.platform}}
-          path: .build/install
+      - name: Debug Build - Run build
+        run: cmake --build .build/deb
+        shell: bash
