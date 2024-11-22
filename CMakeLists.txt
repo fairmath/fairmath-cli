@@ -5,7 +5,12 @@ project(fairmath-keygen CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-set(CMAKE_INSTALL_RPATH "\${ORIGIN}/lib")
+
+if(APPLE)
+    set(CMAKE_INSTALL_RPATH "@loader_path/lib")
+elseif(UNIX)
+    set(CMAKE_INSTALL_RPATH "\${ORIGIN}/lib")
+endif()
 
 find_package(OpenMP)
 find_package(Boost REQUIRED COMPONENTS program_options)
