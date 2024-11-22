@@ -49,6 +49,7 @@ if (OpenMP_CXX_FOUND)
 endif()
 
 target_include_directories(fairmath-keygen PRIVATE ${NLOHMANN_JSON_INCLUDE_DIRS})
-target_link_libraries(fairmath-keygen PRIVATE ${OpenFHE_LIBRARIES} Boost::program_options)
+target_link_libraries(fairmath-keygen PRIVATE ${OpenFHE_SHARED_LIBRARIES} Boost::program_options)
 
 install(TARGETS fairmath-keygen DESTINATION install)
+install(DIRECTORY ${OpenFHE_LIBDIR} DESTINATION install)
