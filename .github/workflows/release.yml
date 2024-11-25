@@ -89,5 +89,5 @@ jobs:
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: fairmath-keygen-${{matrix.platform}}
+          name: fairmath-cli-${{matrix.platform}}
           path: .build/install
