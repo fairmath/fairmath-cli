@@ -1,13 +1,49 @@
 #pragma once
 
-#include <openfhe/core/lattice/constants-lattice.h>
-#include <openfhe/core/lattice/stdlatticeparms.h>
-#include <openfhe/pke/constants-defs.h>
-
-#include <stdexcept>
+#include "openfhe/pke/cryptocontext-ser.h"
 
 namespace cli
 {
+
+namespace utils
+{
+
+template <typename CryptoObjectType>
+void deserialize(const std::string& path, std::shared_ptr<CryptoObjectType>& cryptoObject)
+{
+    if (!lbcrypto::Serial::DeserializeFromFile(path, cryptoObject, lbcrypto::SerType::BINARY))
+    {
+        throw std::runtime_error("Unable to deserialize " + path);
+    }
+}
+
+template <typename CryptoObjectType>
+void serialize(const std::string& path, const std::shared_ptr<CryptoObjectType>& cryptoObject)
+{
+    if (!lbcrypto::Serial::SerializeToFile(path, cryptoObject, lbcrypto::SerType::BINARY))
+    {
+        throw std::runtime_error("Unable to serialize " + path);
+    }
+}
+
+void serialize(const std::string& path,
+    bool (*serializeFunc)(std::ostream&, const lbcrypto::SerType::SERBINARY&, std::string))
+{
+    std::ofstream ofs(path, std::ios::out | std::ios::binary);
+    if (ofs.is_open())
+    {
+        if (!serializeFunc(ofs, lbcrypto::SerType::BINARY, ""))
+        {
+            ofs.close();
+            throw std::runtime_error("Unable to serialize " + path);
+        }
+        ofs.close();
+    }
+    else
+    {
+        throw std::runtime_error("Unable to open " + path + " file for writing serialization");
+    }
+}
 
 [[nodiscard]] constexpr uint32_t strHash(const std::string_view data) noexcept
 {
@@ -144,6 +180,8 @@ namespace cli
         default: throw std::runtime_error("COMPRESSION_LEVEL is not supported");
     }
 }
+
+} // namespace utils
 
 } // namespace cli
 

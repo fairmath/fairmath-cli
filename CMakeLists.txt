@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(fairmath-keygen CXX)
+project(fairmath-cli CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
@@ -40,7 +40,7 @@ set(SOURCES
     src/fairmathCli.cpp
 )
 
-add_executable(fairmath-keygen ${SOURCES})
+add_executable(fairmath-cli ${SOURCES})
 
 if (OpenMP_CXX_FOUND)
     message(STATUS "FOUND OpenMP: ${OpenMP_CXX_LIBRARIES}")
@@ -50,11 +50,11 @@ if (OpenMP_CXX_FOUND)
     set(lib_openmp_path "${OpenMP_libomp_LIBRARY}")
     cmake_path(GET lib_openmp_path PARENT_PATH OMP_LINK_DIR)
 
-    target_link_directories(fairmath-keygen PRIVATE ${OMP_LINK_DIR})
+    target_link_directories(fairmath-cli PRIVATE ${OMP_LINK_DIR})
 endif()
 
-target_include_directories(fairmath-keygen PRIVATE ${NLOHMANN_JSON_INCLUDE_DIRS})
-target_link_libraries(fairmath-keygen PRIVATE ${OpenFHE_SHARED_LIBRARIES} Boost::program_options)
+target_include_directories(fairmath-cli PRIVATE ${NLOHMANN_JSON_INCLUDE_DIRS})
+target_link_libraries(fairmath-cli PRIVATE ${OpenFHE_SHARED_LIBRARIES} Boost::program_options)
 
-install(TARGETS fairmath-keygen DESTINATION install)
+install(TARGETS fairmath-cli DESTINATION install)
 install(DIRECTORY ${OpenFHE_LIBDIR} DESTINATION install)
