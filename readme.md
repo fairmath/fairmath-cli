@@ -1,4 +1,4 @@
-# Fairmath KeyGen Application
+# Fairmath CLI Application
 
 ## Description
 This application is supposed to use within the FHE app runner provided by fairmath computer actor. It is responsible for FHE key generation and encryption/decryption of user's data. This application relying on OpenFHE library to generate keys and making encryption.
@@ -64,3 +64,10 @@ $ cmake --preset=rel && cmake --build .build/rel
 Change rel to dbg to build a debug configuration.
 
 The very first build could take a time because of vcpkg will build 3rd party libraries for this project. NExt builds will be mush faster since 3rd party libraries will be already built and cached.
+
+* Installation
+Run cmake install to gather all binary files related to the build.
+```shell
+$ cmake --install .build/rel
+```
+If you are using provided `CMakeUserPresets.json` then build will be installed to the `.build/install` directory.
