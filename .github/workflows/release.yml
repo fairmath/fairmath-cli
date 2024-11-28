@@ -79,15 +79,15 @@ jobs:
         shell: bash
 
       - name: Run build
-        run: cmake --build .build/rel
+        run: cmake --build BUILD/rel
         shell: bash
 
       - name: Run install
-        run: cmake --install .build/rel
+        run: cmake --install BUILD/rel
         shell: bash
 
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
           name: fairmath-cli-${{matrix.platform}}
-          path: .build/install
+          path: BUILD/install
