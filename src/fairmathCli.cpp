@@ -91,7 +91,19 @@ int main(int argc, char *argv[]) try
         std::shared_ptr<lbcrypto::PlaintextImpl> plaintext;
         cc->Decrypt(ciphertext, privateKey, &plaintext);
 
-        plaintext->SetLength(variablesMap["slots"].as<int>());
+        if (dynamic_cast<const lbcrypto::StringEncoding*>(plaintext.get()))
+        {
+            if (std::find_if(parsed.options.begin(), parsed.options.end(),
+                [](const po::option& option) { return option.string_key == "slots"; })
+                != parsed.options.end())
+            {
+                throw std::runtime_error("Slots are unavailable for string encoding");
+            }
+        }
+        else
+        {
+            plaintext->SetLength(variablesMap["slots"].as<int>());
+        }
 
         std::ofstream ofsOutputDecryption(variablesMap["output"].as<const std::string&>(), std::ios::out);
         if (!ofsOutputDecryption.is_open()) { throw std::runtime_error("Unable to open" + variablesMap["output"].as<const std::string&>()); }
